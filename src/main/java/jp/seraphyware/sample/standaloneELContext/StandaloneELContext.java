@@ -1,8 +1,11 @@
 package jp.seraphyware.sample.standaloneELContext;
 
 import java.beans.FeatureDescriptor;
+import java.lang.reflect.Array;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -26,7 +29,7 @@ import javax.el.VariableMapper;
  * このELコンテキストを構築後、setContextで、このクラスをキーとして、
  * キーは文字列、値はオブジェクトとするマップをコンテキスト値として設定する.<br>
  * EL式は、このコンテキストに設定されている値について解釈する.<br>
- * 
+ *
  * 参考:
  * ttp://grepcode.com/file/repo1.maven.org/maven2/javax.servlet.jsp/jsp-api/2.2.1-b03/javax/servlet/jsp/el/ScopedAttributeELResolver.java#ScopedAttributeELResolver
  * ttp://mk.hatenablog.com/entry/20041210/1132029220
@@ -71,9 +74,19 @@ public class StandaloneELContext extends ELContext {
 		this.funcMapper = new FunctionMapper() {
 			@Override
 			public Method resolveFunction(String prefix, String localName) {
-				System.out.println("*func prefix=" + prefix + "/localName="
-						+ localName);
-				return null; // 常に該当なし
+				if ("fn".equals(prefix)) {
+					// fnプレフィックスがある場合は、その関数名を
+					// このクラスのstaticメソッドの関数として検索し、あれば、それを用いる.
+					Class<?> cls = StandaloneELContext.this.getClass();
+					for (Method m : cls.getMethods()) {
+						if (Modifier.isStatic(m.getModifiers())) {
+							if (m.getName().equals(localName)) {
+								return m;
+							}
+						}
+					}
+				}
+				return null; // 該当なし
 			}
 		};
 
@@ -91,19 +104,27 @@ public class StandaloneELContext extends ELContext {
 			}
 		};
 
-		// 引数で指定されたハッシュマップから名前解決するリゾルバ.
+		// ELContextに設定されたコンテキストから値を取得するローカルリゾルバ
 		final ELResolver localResolver = new ELResolver() {
-			
+
+			/**
+			 * このクラスをキーとしてコンテキストを表すマップを取得する.<br>
+			 * 未設定であればIllegalStateException例外を発生させる.<br>
+			 *
+			 * @param elContext
+			 * @return
+			 */
 			protected Map<String, Object> getLocalContext(ELContext elContext) {
 				@SuppressWarnings("unchecked")
 				Map<String, Object> ctx = (Map<String, Object>)
 						elContext.getContext(StandaloneELContext.class);
 				if (ctx == null) {
-					throw new IllegalStateException("missing context: " + StandaloneELContext.class );
+					throw new IllegalStateException("コンテキストが未設定です: "
+							+ StandaloneELContext.class);
 				}
 				return ctx;
 			}
-			
+
 			@Override
 			public Object getValue(ELContext elContext, Object base,
 					Object property) throws NullPointerException,
@@ -113,6 +134,9 @@ public class StandaloneELContext extends ELContext {
 				}
 
 				if (base == null) {
+					// baseがnullということは、以下のEL式の"first"の要素を示している.
+					// ${first.second}
+					// この場合、propertyにはfirstの名前が格納されている.
 					elContext.setPropertyResolved(true);
 					if (property instanceof String) {
 						Map<String, Object> ctx = getLocalContext(elContext);
@@ -226,5 +250,29 @@ public class StandaloneELContext extends ELContext {
 	@Override
 	public VariableMapper getVariableMapper() {
 		return varMapper;
+	}
+
+	/**
+	 * EL式から呼び出すことのできる長さを返す関数.<br>
+	 * 配列、コレクション、マップの場合は要素数を返す.<br>
+	 * それ以外は文字列表現の場合の文字数を返す.<br>
+	 * nullは0を返す.<br>
+	 * @param arg
+	 * @return 長さ
+	 */
+	public static int length(Object arg) {
+		if (arg == null) {
+			return 0;
+		}
+		if (arg.getClass().isArray()) {
+			return Array.getLength(arg);
+		}
+		if (arg instanceof Collection) {
+			return ((Collection<?>) arg).size();
+		}
+		if (arg instanceof Map) {
+			return ((Map<?, ?>) arg).size();
+		}
+		return arg.toString().length();
 	}
 }
