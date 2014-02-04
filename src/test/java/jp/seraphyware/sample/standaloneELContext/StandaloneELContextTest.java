@@ -10,18 +10,28 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.ResourceBundle;
 
+import javax.el.ArrayELResolver;
+import javax.el.BeanELResolver;
 import javax.el.CompositeELResolver;
 import javax.el.ELContext;
+import javax.el.ELResolver;
 import javax.el.ExpressionFactory;
+import javax.el.FunctionMapper;
+import javax.el.ListELResolver;
+import javax.el.MapELResolver;
 import javax.el.MethodExpression;
 import javax.el.PropertyNotFoundException;
 import javax.el.PropertyNotWritableException;
+import javax.el.ResourceBundleELResolver;
 import javax.el.ValueExpression;
 import javax.el.VariableMapper;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
+
+import com.sun.el.lang.FunctionMapperImpl;
+import com.sun.el.lang.VariableMapperImpl;
 
 /**
  * EL式を単独で使用するためのELコンテキストの使用例および単体テストコード.<br>
@@ -694,5 +704,51 @@ public class StandaloneELContextTest extends TestCase {
 
 			assertEquals(answer, ret);
 		}
+	}
+
+	/**
+	 * [テスト] 最低限のEL式評価方法のテスト
+	 */
+	public void testMinimum() {
+		final CompositeELResolver resolver = new CompositeELResolver();
+	    resolver.add(new ResourceBundleELResolver()); // リソースバンドルの解決用
+	    resolver.add(new MapELResolver()); // Map, Propertiesの解決用
+	    resolver.add(new ListELResolver()); // Listの解決用
+	    resolver.add(new ArrayELResolver()); // 配列の解決用
+	    resolver.add(new BeanELResolver()); // Beanのsetter/getterの解決用
+
+	    final VariableMapper varMapper = new VariableMapperImpl(); // 借用
+	    final FunctionMapper funcMapper = new FunctionMapperImpl(); // 借用
+
+	    ELContext elContext = new ELContext() {
+			@Override
+			public ELResolver getELResolver() {
+				return resolver;
+			}
+			@Override
+			public FunctionMapper getFunctionMapper() {
+				return funcMapper;
+			}
+			@Override
+			public VariableMapper getVariableMapper() {
+				return varMapper;
+			}
+		};
+
+		// EL式の評価ファクトリ
+		ExpressionFactory ef = ExpressionFactory.newInstance();
+
+		// EL式で評価するための変数を設定する.
+		varMapper.setVariable("foo", ef.createValueExpression("FOO", String.class));
+		varMapper.setVariable("bar", ef.createValueExpression(
+				Integer.valueOf(123), Integer.class));
+
+		// EL式を評価する.
+		String expression = "hello, ${foo}! ${bar + 234}";
+		ValueExpression ve = ef.createValueExpression(elContext, expression, String.class);
+		String ret = (String) ve.getValue(elContext);
+
+		System.out.println("result=" + ret);
+		// result=hello, FOO! 357
 	}
 }
