@@ -2,8 +2,10 @@ package jp.seraphyware.sample.standaloneELContext;
 
 import java.awt.Color;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.ResourceBundle;
@@ -635,6 +637,62 @@ public class StandaloneELContextTest extends TestCase {
 			ValueExpression ve2 = ef.createValueExpression(elContext, expression, String.class);
 			Object ret2 = ve2.getValue(elContext);
 			assertEquals("", ret2); // 存在しないキーの値は文字列として変換した場合は空文字
+		}
+	}
+
+	/**
+	 * [テスト] ELと動的な変数のテスト
+	 */
+	public void testDynamicVar() {
+		StandaloneELContext elContext = new StandaloneELContext();
+		ExpressionFactory ef = ExpressionFactory.newInstance();
+		VariableMapper varMapper = elContext.getVariableMapper();
+
+		ArrayList<MyBean> beans = new ArrayList<MyBean>();
+		for (int idx = 0; idx < 20; idx++) {
+			MyBean bean = new MyBean();
+			bean.setX(100 + idx);
+			bean.setY(200 + idx);
+			beans.add(bean);
+		}
+
+		varMapper.setVariable("beans", ef.createValueExpression(beans, List.class));
+
+		String expression = "${beans[idx].x + beans[idx].y}";
+		{
+			// ValueExpressionは(レキシカルスコープのごとく)評価時点で見えているVariableMapperの変数を
+			// 取り込んでいるため、評価後に変数を設定しても、その値は使用されない。
+			ValueExpression ve = ef.createValueExpression(elContext,
+					expression, BigDecimal.class);
+
+			// 評価後にidx変数を設定する.
+			varMapper.setVariable("idx",
+					ef.createValueExpression(Integer.valueOf(0), Integer.class));
+
+			try {
+				// 評価してもidxは存在しないので例外が発生する.
+				ve.getValue(elContext);
+				assertTrue(false);
+
+			} catch (PropertyNotFoundException ex) {
+				assertTrue(true);
+			}
+		}
+
+		for (int idx = 0; idx < beans.size(); idx++) {
+			varMapper.setVariable("idx",
+					ef.createValueExpression(Integer.valueOf(idx), Integer.class));
+
+			// ValueExpressionは(レキシカルスコープのごとく)評価時点で見えているVariableMapperの変数を
+			// 取り込んでいるため、評価後に変数を設定しても、その値は使用されない。
+			ValueExpression ve = ef.createValueExpression(elContext,
+					expression, BigDecimal.class);
+			BigDecimal ret = (BigDecimal)ve.getValue(elContext);
+
+			MyBean bean = beans.get(idx);
+			BigDecimal answer = BigDecimal.valueOf(bean.getX() + bean.getY());
+
+			assertEquals(answer, ret);
 		}
 	}
 }
