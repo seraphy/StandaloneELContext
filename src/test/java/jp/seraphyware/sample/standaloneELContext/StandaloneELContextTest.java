@@ -10,6 +10,7 @@ import javax.el.CompositeELResolver;
 import javax.el.ELContext;
 import javax.el.ExpressionFactory;
 import javax.el.MethodExpression;
+import javax.el.PropertyNotFoundException;
 import javax.el.PropertyNotWritableException;
 import javax.el.ValueExpression;
 import javax.el.VariableMapper;
@@ -44,13 +45,13 @@ public class StandaloneELContextTest extends TestCase {
 	 * EL式からBeanによるアクセスのテスト用のクラス.
 	 */
 	public static final class MyBean {
-		private int x;
-		private int y;
+		private int x = 1;
+		private int y = 2;
 
 		public int getX() {
 			return x;
 		}
-		
+
 		public void setX(int x) {
 			this.x = x;
 		}
@@ -58,11 +59,11 @@ public class StandaloneELContextTest extends TestCase {
 		public int getY() {
 			return y;
 		}
-		
+
 		public void setY(int y) {
 			this.y = y;
 		}
-		
+
 		public int init(int x, int y) {
 			this.x = x;
 			this.y = y;
@@ -72,6 +73,16 @@ public class StandaloneELContextTest extends TestCase {
 		public String mes(String val) {
 			return "!" + val + "!";
 		}
+
+		/**
+		 * staticフィールドのテスト
+		 */
+		public static String STATIC_FIELD = "HELLO!";
+
+		/**
+		 * readonly staticフィールドのテスト
+		 */
+		public static final int READONLY = 12345;
 	}
 
 	/**
@@ -97,12 +108,12 @@ public class StandaloneELContextTest extends TestCase {
 
 		ExpressionFactory ef = ExpressionFactory.newInstance();
 		VariableMapper varMapper = elContext.getVariableMapper();
-		
+
 		Map<String, Object> data = createTestData();
 		for (Map.Entry<String, Object> entry : data.entrySet()) {
 			String key = entry.getKey();
 			Object val = entry.getValue();
-			
+
 			ValueExpression wrapValue = ef.createValueExpression(val, Object.class);
 			varMapper.setVariable(key, wrapValue);
 		}
@@ -136,10 +147,10 @@ public class StandaloneELContextTest extends TestCase {
 		data.put("num2", BigDecimal.valueOf(2));
 		data.put("int3", Integer.valueOf(3));
 		data.put("int4", Integer.valueOf(4));
-		
+
 		return data;
 	}
-	
+
 	/**
 	 * EL式を評価する.
 	 * @param elContext
@@ -346,7 +357,7 @@ public class StandaloneELContextTest extends TestCase {
 			String expression = "#{map.keyx}";
 			ValueExpression ve = ef.createValueExpression(elContext,
 					expression, Object.class);
-			
+
 			ve.setValue(elContext, "update!");
 
 			ValueExpression ve2 = ef.createValueExpression(elContext, "${map.keyx}", String.class);
@@ -359,7 +370,7 @@ public class StandaloneELContextTest extends TestCase {
 			String expression = "#{bean.x}";
 			ValueExpression ve = ef.createValueExpression(elContext,
 					expression, Integer.class);
-			
+
 			ve.setValue(elContext, "999");
 
 			ValueExpression ve2 = ef.createValueExpression(elContext, "${bean.x}", Integer.class);
@@ -381,7 +392,7 @@ public class StandaloneELContextTest extends TestCase {
 				assertTrue(true);
 			}
 		}
-		
+
 		{
 			// メソッド呼び出し (引数がELに含まれるケース)
 			String expression = "#{bean.init(int3, int4)}";
@@ -406,10 +417,10 @@ public class StandaloneELContextTest extends TestCase {
 			Object ret = me.invoke(
 					elContext,
 					new Object[]{Integer.valueOf(100), Integer.valueOf(200)});
-			
+
 			assertEquals(Integer.valueOf(300), ret);
 		}
-		
+
 		{
 			// 単純変数のラッピングと変数への設定と評価
 			ValueExpression ve = ef.createValueExpression("FOOBAR", String.class);
@@ -418,29 +429,32 @@ public class StandaloneELContextTest extends TestCase {
 			String expression = "hello, ${fooBar}!";
 			ValueExpression ve2 = ef.createValueExpression(elContext, expression, Object.class);
 			Object ret = ve2.getValue(elContext);
-			
+
 			assertEquals("hello, FOOBAR!", ret);
 		}
 
 		assertTrue(true);
 	}
-	
+
 	/**
-	 * 独自のColorELResolverによる解釈のテスト
+	 * [テスト] 独自のClassELResolverによる解釈のテスト
 	 */
-	public void testColorELResolver() {
+	public void testClassELResolver() {
 		StandaloneELContext elContext = new StandaloneELContext() {
 			@Override
 			protected void initELResolver(CompositeELResolver resolver) {
 				// ColorELResolverが返すマーカーオブジェクトを標準のBeanResolverが解決する前に
 				// 独自に解釈する必要があるので、リゾルバの順序を前にもってくる必要がある。
-				resolver.add(new ColorELResolver());
+				resolver.add(new ClassELResolver());
 				super.initELResolver(resolver);
 			}
 		};
-		
+
 		ExpressionFactory ef = ExpressionFactory.newInstance();
-		
+
+		VariableMapper varMapper = elContext.getVariableMapper();
+		varMapper.setVariable("bean", ef.createValueExpression(new MyBean(), MyBean.class));
+
 		{
 			// リテラルのテスト
 			String expression = "${123 + 456}";
@@ -448,22 +462,131 @@ public class StandaloneELContextTest extends TestCase {
 			Object ret = ve.getValue(elContext);
 			assertEquals(123 + 456, ret);
 		}
-		
+
 		{
-			// ColorELResolverのテスト
-			String expression = "${Color}";
+			// BeanELResolverとの協調のテスト
+			String expression = "${bean}";
 			ValueExpression ve = ef.createValueExpression(elContext, expression, Object.class);
-			Object ret = ve.getValue(elContext); // ColorELResolverが作成したマーカーオブジェクトが返される.
-			assertTrue(ret != null);
+			Object ret = ve.getValue(elContext);
+			assertTrue(ret instanceof MyBean);
 		}
 
 		{
-			// ColorELResolverの子要素のテスト
-			String expression = "${Color.red}";
+			// BeanELResolverとの協調のテスト2 (子要素)
+			String expression = "${bean.x + bean.y}";
+			ValueExpression ve = ef.createValueExpression(elContext, expression, Integer.class);
+			Object ret = ve.getValue(elContext);
+			assertEquals(Integer.valueOf(3), ret);
+		}
+
+		{
+			// ClassELResolverのテスト[root]
+			String expression = "${Class}";
+			ValueExpression ve = ef.createValueExpression(elContext, expression, Object.class);
+			Object ret = ve.getValue(elContext); // ColorELResolverが作成したマーカーオブジェクトが返される.
+			assertTrue(ret instanceof Class);
+		}
+
+		{
+			// ClassELResolverの子要素[class]のテスト
+			String expression = "${Class['java.awt.Color']}";
+			ValueExpression ve = ef.createValueExpression(elContext, expression, Class.class);
+			Object ret = ve.getValue(elContext);
+			assertTrue(ret.equals(Color.class));
+		}
+
+		{
+			// ClassELResolverの孫要素[field]のテスト
+			String expression = "${Class['java.awt.Color'].red}";
 			ValueExpression ve = ef.createValueExpression(elContext, expression, Object.class);
 			Object ret = ve.getValue(elContext);
 			assertTrue(ret instanceof Color);
 			assertEquals(Color.red, ret);
+		}
+
+		{
+			// ClassELResolverの子要素のテスト(存在しないクラス))
+			String expression = "${Class[Color]}";
+			ValueExpression ve = ef.createValueExpression(elContext, expression, Object.class);
+			try {
+				ve.getValue(elContext);
+				assertTrue(false);
+
+			} catch (PropertyNotFoundException e) {
+				assertTrue(true);
+			}
+		}
+
+		{
+			// ClassELResolverの子要素のテスト(存在しないフィールド))
+			String expression = "${Class['java.awt.Color'].redblue}";
+			ValueExpression ve = ef.createValueExpression(elContext, expression, Object.class);
+			try {
+				ve.getValue(elContext);
+				assertTrue(false);
+
+			} catch (PropertyNotFoundException e) {
+				assertTrue(true);
+			}
+		}
+
+		{
+			// ClassELResolverのメソッド呼び出しテスト
+			String expression = "${Class['java.awt.Color'].toString}";
+			MethodExpression me = ef.createMethodExpression(elContext, expression, Object.class, new Class[0]);
+			Object ret = me.invoke(elContext, new Object[0]);
+			assertEquals(Color.class.toString(), ret);
+		}
+
+		{
+			// ClassELResolverのフィールドの読み書きテスト
+			String expression = "${Class['jp.seraphyware.sample.standaloneELContext.StandaloneELContextTest$MyBean'].STATIC_FIELD}";
+			ValueExpression ve = ef.createValueExpression(elContext, expression, Object.class);
+
+			// STATIC_FIELDの値を取得してみる
+			MyBean.STATIC_FIELD = "HELLO!";
+			Object ret = ve.getValue(elContext);
+			assertEquals("HELLO!", ret);
+
+			// STATIC_FIELDの値を設定してみる
+			ve.setValue(elContext, "WORLD!!");
+			assertEquals("WORLD!!", MyBean.STATIC_FIELD);
+		}
+
+		{
+			// ClassELResolverのフィールドの読み書きテスト(書き込み不可)
+			String expression = "${Class['jp.seraphyware.sample.standaloneELContext.StandaloneELContextTest$MyBean']}";
+			ValueExpression ve = ef.createValueExpression(elContext, expression, Object.class);
+
+			Object ret = ve.getValue(elContext);
+			assertEquals(MyBean.class, ret);
+
+			// フィールドとして値を設定してみる
+			try {
+				ve.setValue(elContext, Object.class);
+				assertTrue(false);
+
+			} catch (PropertyNotWritableException ex) {
+				assertTrue(true);
+			}
+		}
+
+		{
+			// ClassELResolverのフィールドの読み書きテスト(書き込み不可)
+			String expression = "${Class['jp.seraphyware.sample.standaloneELContext.StandaloneELContextTest$MyBean'].READONLY}";
+			ValueExpression ve = ef.createValueExpression(elContext, expression, Object.class);
+
+			Object ret = ve.getValue(elContext);
+			assertEquals(Integer.valueOf(12345), ret);
+
+			// フィールドとして値を設定してみる
+			try {
+				ve.setValue(elContext, Object.class);
+				assertTrue(false);
+
+			} catch (PropertyNotWritableException ex) {
+				assertTrue(true);
+			}
 		}
 	}
 }

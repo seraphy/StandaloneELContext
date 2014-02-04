@@ -108,7 +108,7 @@ public abstract class StandaloneBaseELResolver extends ELResolver {
 			 FeatureDescriptor descriptor = new FeatureDescriptor();
 			 descriptor.setName(key);
 			 descriptor.setDisplayName(key);
-			 descriptor.setShortDescription("standalone attribute");
+			 descriptor.setShortDescription(key);
 			 descriptor.setExpert(false);
 			 descriptor.setHidden(false);
 			 descriptor.setPreferred(true);
