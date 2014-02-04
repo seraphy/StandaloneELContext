@@ -5,6 +5,8 @@ import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
+import java.util.ResourceBundle;
 
 import javax.el.CompositeELResolver;
 import javax.el.ELContext;
@@ -587,6 +589,52 @@ public class StandaloneELContextTest extends TestCase {
 			} catch (PropertyNotWritableException ex) {
 				assertTrue(true);
 			}
+		}
+	}
+
+	/**
+	 * [テスト] リソースバンドルとシステムプロパティのテスト
+	 */
+	public void testResouceBundle() {
+		StandaloneELContext elContext = new StandaloneELContext();
+		ExpressionFactory ef = ExpressionFactory.newInstance();
+		VariableMapper varMapper = elContext.getVariableMapper();
+
+		// リソースバンドル
+		ResourceBundle res = ResourceBundle.getBundle(getClass().getCanonicalName());
+		varMapper.setVariable("res", ef.createValueExpression(res, ResourceBundle.class));
+
+		// システムプロパティ
+		varMapper.setVariable("sys", ef.createValueExpression(
+				System.getProperties(), Properties.class));
+
+		{
+			// ResourceBundleELResolverのテスト
+			String expression = "${res['foo.bar.baz']}";
+			ValueExpression ve = ef.createValueExpression(elContext, expression, String.class);
+			Object ret = ve.getValue(elContext);
+			assertEquals(res.getString("foo.bar.baz"), ret);
+		}
+
+		{
+			// SystemPropertiesのテスト
+			String expression = "${sys['java.version']}";
+			ValueExpression ve = ef.createValueExpression(elContext, expression, String.class);
+			Object ret = ve.getValue(elContext);
+			assertEquals(System.getProperty("java.version"), ret);
+		}
+
+		{
+			// SystemPropertiesのテスト[不存在のキー]
+			String expression = "${sys['dummy.xyz']}";
+
+			ValueExpression ve = ef.createValueExpression(elContext, expression, Object.class);
+			Object ret = ve.getValue(elContext);
+			assertEquals(null, ret); // 存在しないキーの値はオブジェクトとしてはnull
+
+			ValueExpression ve2 = ef.createValueExpression(elContext, expression, String.class);
+			Object ret2 = ve2.getValue(elContext);
+			assertEquals("", ret2); // 存在しないキーの値は文字列として変換した場合は空文字
 		}
 	}
 }

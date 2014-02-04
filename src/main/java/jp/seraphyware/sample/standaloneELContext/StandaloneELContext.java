@@ -10,6 +10,7 @@ import javax.el.ELContext;
 import javax.el.FunctionMapper;
 import javax.el.ListELResolver;
 import javax.el.MapELResolver;
+import javax.el.ResourceBundleELResolver;
 import javax.el.ValueExpression;
 import javax.el.VariableMapper;
 
@@ -78,10 +79,11 @@ public class StandaloneELContext extends ELContext {
 	 * @param resolver
 	 */
 	protected void initELResolver(CompositeELResolver resolver) {
-		resolver.add(new MapELResolver());
-		resolver.add(new ListELResolver());
-		resolver.add(new ArrayELResolver());
-		resolver.add(new BeanELResolver());
+		resolver.add(new ResourceBundleELResolver()); // リソースバンドルの解決用
+		resolver.add(new MapELResolver()); // Map, Propertiesの解決用
+		resolver.add(new ListELResolver()); // Listの解決用
+		resolver.add(new ArrayELResolver()); // 配列の解決用
+		resolver.add(new BeanELResolver()); // Beanのsetter/getterの解決用
 	}
 
 	@Override
