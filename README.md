@@ -11,10 +11,12 @@ EL式をプログラム側より評価するための仕組みについてのサ
 - FunctionMapperによるEL式からの関数の呼び出し
 
 # References
-- http://www.techscore.com/tech/Java/JavaEE/JSP/15-4/
-- http://grepcode.com/file/repo1.maven.org/maven2/javax.servlet.jsp/jsp-api/2.2.1b03/javax/servlet/jsp/el/ScopedAttributeELResolver.java#ScopedAttributeELResolver
-- http://mk.hatenablog.com/entry/20041210/1132029220
-- http://oss.infoscience.co.jp/myfaces/cwiki.apache.org/confluence/display/MYFACES/ELResolver+ordering.html
-- http://d.hatena.ne.jp/shin/20090426/p1
-- http://kiruah.sblo.jp/pages/user/iphone/article?article_id=56792402
-
+- 同じようなことをやってるサンプル例
+ - http://illegalargumentexception.blogspot.jp/2008/04/java-using-el-outside-j2ee.html
+ - http://stackoverflow.com/questions/17026863/java-how-to-evaluate-an-el-expression-standalone-outside-any-web-framework
+- 参考にしたところ
+ - 独自のELResolverの実装例 http://www.techscore.com/tech/Java/JavaEE/JSP/15-4/
+ - 独自のELResolverの実装例 http://d.hatena.ne.jp/shin/20090426/p1
+ - 独自のELResolverの実装例 http://kiruah.sblo.jp/pages/user/iphone/article?article_id=56792402
+ - ELResolverの評価順序 http://mk.hatenablog.com/entry/20041210/1132029220
+ - ELResolverの評価順序 http://oss.infoscience.co.jp/myfaces/cwiki.apache.org/confluence/display/MYFACES/ELResolver+ordering.html
