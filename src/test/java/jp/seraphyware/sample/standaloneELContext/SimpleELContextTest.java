@@ -1,12 +1,9 @@
 package jp.seraphyware.sample.standaloneELContext;
 
-import java.beans.FeatureDescriptor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -21,7 +18,7 @@ import javax.el.FunctionMapper;
 import javax.el.ListELResolver;
 import javax.el.MapELResolver;
 import javax.el.MethodExpression;
-import javax.el.PropertyNotWritableException;
+import javax.el.PropertyNotFoundException;
 import javax.el.ResourceBundleELResolver;
 import javax.el.ValueExpression;
 import javax.el.VariableMapper;
@@ -246,79 +243,57 @@ public class SimpleELContextTest extends TestCase {
 			System.out.println("ret=" + ret);
 		}
 	}
+	
+	public void testUndefinedVarSet() {
+		final CompositeELResolver resolver = new CompositeELResolver();
+		resolver.add(new ResourceBundleELResolver()); // リソースバンドルの解決用
+		resolver.add(new MapELResolver()); // Map, Propertiesの解決用
+		resolver.add(new ListELResolver()); // Listの解決用
+		resolver.add(new ArrayELResolver()); // 配列の解決用
+		resolver.add(new BeanELResolver()); // Beanのsetter/getterの解決用
 
-	/**
-	 * 暗黙の"implicit"コンテキストの型
-	 */
-	private static class ImplicitContext extends HashMap<String, Object> {
-	}
+		final VariableMapper varMapper = new VariableMapperImpl(); // 借用
 
-	/**
-	 * 暗黙の変数"implicit"をELContextから取得するためのELResolverの実装例.
-	 */
-	private static class MyImplicitELResolver extends ELResolver {
-
-		@Override
-		public Class<?> getCommonPropertyType(ELContext context, Object base) {
-			if (base == null) {
-				// baseがnull、つまり${first.xxxx}のfirstの場合は、
-				// 文字列として変数名を受け取ることを示す.
-				return String.class;
+		final FunctionMapper funcMapper = new FunctionMapper() {
+			@Override
+			public Method resolveFunction(String prefix, String localName) {
+				return null; // nullの場合は関数が未登録であることを示す
 			}
-			return null;
-		}
+		};
 
-		@Override
-		public Iterator<FeatureDescriptor> getFeatureDescriptors(
-				ELContext context, Object base) {
-			if (base != null) {
-				// とりあえず空を返しておく.(手抜き、なくてもEL式は動く)
-				return Collections.<FeatureDescriptor> emptyList().iterator();
+		ELContext elContext = new ELContext() {
+			@Override
+			public ELResolver getELResolver() {
+				return resolver;
 			}
-			return null;
-		}
 
-		@Override
-		public Class<?> getType(ELContext context, Object base, Object property) {
-			if (base == null && property != null) {
-				String name = property.toString();
-				if ("implicit".equals(name)) {
-					// ${first.second}の、firstの場合、
-					// それが"implicit"という名前であれば、ImplicitContextクラスを返す.
-					context.setPropertyResolved(true);
-					return ImplicitContext.class;
-				}
+			@Override
+			public FunctionMapper getFunctionMapper() {
+				return funcMapper;
 			}
-			return null;
-		}
 
-		@Override
-		public Object getValue(ELContext context, Object base, Object property) {
-			if (base == null && property != null) {
-				String name = property.toString();
-				if ("implicit".equals(name)) {
-					// ${first.second}の、firstの場合、
-					// それが"implicit"という名前であれば、ELContextに設定されている
-					// ImplicitContextコンテキストを返す.
-					// ※ ELContext#setContext()で事前に設定しておくこと.
-					context.setPropertyResolved(true);
-					return context.getContext(ImplicitContext.class);
-				}
+			@Override
+			public VariableMapper getVariableMapper() {
+				return varMapper;
 			}
-			return null;
-		}
+		};
 
-		@Override
-		public boolean isReadOnly(ELContext context, Object base,
-				Object property) {
-			return true;
-		}
+		// EL式の評価ファクトリ
+		ExpressionFactory ef = ExpressionFactory.newInstance();
 
-		@Override
-		public void setValue(ELContext context, Object base, Object property,
-				Object value) {
-			throw new PropertyNotWritableException("代入はサポートされていません/base="
-					+ base + "/property=" + property);
+		{
+			String expression = "${baz}";
+			ValueExpression ve = ef.createValueExpression(elContext,
+					expression, String.class);
+			try {
+				ve.setValue(elContext, "BAZ!!");
+				assertTrue(false);
+
+			} catch (PropertyNotFoundException ex) {
+				// javax.el.PropertyNotFoundException: 
+				// "ELResolver cannot handle a null base Object with identifier 'baz'"
+				assertTrue(true);
+			}
 		}
 	}
 }

@@ -1,5 +1,5 @@
 # Synopsis
-EL式をプログラム側より評価するための仕組みについてのサンプル.
+EL式(2.2/3.0)をプログラム側より評価するための仕組みについてのサンプル.
 
 # Description
 
@@ -20,3 +20,7 @@ EL式をプログラム側より評価するための仕組みについてのサ
  - 独自のELResolverの実装例 http://kiruah.sblo.jp/pages/user/iphone/article?article_id=56792402
  - ELResolverの評価順序 http://mk.hatenablog.com/entry/20041210/1132029220
  - ELResolverの評価順序 http://oss.infoscience.co.jp/myfaces/cwiki.apache.org/confluence/display/MYFACES/ELResolver+ordering.html
+- EL3の参考
+ - https://jcp.org/en/jsr/detail?id=341
+ - http://www.infoq.com/jp/news/2013/07/el3
+ - https://weblogs.java.net/blog/swchan2/archive/2013/07/01/standard-deviation-illustration-expression-language-30-servlet-environment
