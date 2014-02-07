@@ -8,6 +8,7 @@ import java.util.List;
 
 import javax.el.ELClass;
 import javax.el.ELProcessor;
+import javax.el.PropertyNotWritableException;
 import javax.el.ValueExpression;
 import javax.el.VariableMapper;
 
@@ -45,6 +46,11 @@ public class EL3StandaloneTest extends TestCase {
 		// (EL3新設の"BeanNameELResolver"で解決されるローカル変数)
 		elProc.defineBean("foo", new BigDecimal("123"));
 		elProc.defineBean("bar", "brabrabra");
+
+		// 変数の定義
+		// (引数のEL式のValueExpressionがVariableMapperに設定される.)
+		// (Variableはローカル変数よりも優先され、setValueやEL式の代入では更新できずエラーとなる.)
+		elProc.setVariable("v1", "foo * 2");
 
 		{
 			// evalによる評価
@@ -92,6 +98,32 @@ public class EL3StandaloneTest extends TestCase {
 			// map={b=222, a=111}
 		}
 		
+		{
+			// ローカル変数とVariableMapper変数の混在
+			Integer v = (Integer) elProc.getValue("v1 + foo", Integer.class);
+			assertEquals(Integer.valueOf(123 + 123 * 2), v);
+
+			// VariableMapper変数の更新はできない.
+			try {
+				elProc.setValue("v1", 4567);
+				assertTrue(false);
+
+			} catch (PropertyNotWritableException ex) {
+				System.out.println(ex.toString());
+				// javax.el.PropertyNotWritableException: Illegal Syntax for Set Operation
+			}
+
+			// VariableMapper変数はEL式からも代入できない.
+			try {
+				elProc.eval("v1 = 4567");
+				assertTrue(false);
+
+			} catch (PropertyNotWritableException ex) {
+				System.out.println(ex.toString());
+				// javax.el.PropertyNotWritableException: Illegal Syntax for Set Operation
+			}
+		}
+
 		{
 			// EL3の独自関数の定義方法
 			Method method;
