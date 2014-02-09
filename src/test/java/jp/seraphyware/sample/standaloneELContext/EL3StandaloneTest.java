@@ -100,8 +100,8 @@ public class EL3StandaloneTest extends TestCase {
 
 		{
 			// ローカル変数とVariableMapper変数の混在
-			Integer v = (Integer) elProc.getValue("v1 + foo", Integer.class);
-			assertEquals(Integer.valueOf(123 + 123 * 2), v);
+			Integer v = (Integer) elProc.getValue("foo+v1", Integer.class);
+			assertEquals(Integer.valueOf(1234 + 1234 * 2), v);
 
 			// VariableMapper変数の更新はできない.
 			try {
@@ -257,6 +257,30 @@ public class EL3StandaloneTest extends TestCase {
 			// ラムダ式を返すラムダ式の変数格納と、変数からのラムダ式の呼び出し
 			Number ret = (Number) elProc.eval("fn=a->(b->a+b);fn2=(a,f)->f(a);fn2(12,fn(21))");
 			assertEquals(33, ret.intValue());
+		}
+
+		{
+			// ラムダがネストした場合の実験.
+			// ラムダ引数はラムダが生成されたときの値を保持していることを確認できる.
+			// ELContext#getLambdaArgument(String arg) あたりの仕組みで実現されていると思われる.
+			elProc.eval("fn=a->(b->a+b)");
+			elProc.eval("arg=10;fn1=fn(arg);arg=20;fn2=fn(arg)");
+			Number ret = (Number) elProc.eval("arg=50;fn1(arg)+fn2(arg)");
+			assertEquals(10 + 50 + 20 + 50, ret.intValue());
+		}
+
+		{
+			// ラムダの中から参照する外の変数はラムダ式を生成した時点の値はキャプチャしはておらず、
+			// ラムダ式が評価された時点のダイナミックスコープになっている.(レキシカルスコープではない)
+			elProc.eval("a=1234;fn=x->(x+a)");
+			Number ret = (Number) elProc.eval("a=5678;fn(2345)");
+			assertEquals(5678 + 2345, ret.intValue());
+		}
+
+		{
+			// 変数のスコープのテスト
+			Number ret = (Number) elProc.eval("a=1234;fn=()->(a=2345;b=3456);fn();a+b");
+			assertEquals(2345 + 3456, ret.intValue());
 		}
 	}
 
