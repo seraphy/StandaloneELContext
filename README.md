@@ -11,6 +11,7 @@ EL式(2.2/3.0)をプログラム側より評価するための仕組みについ
 - FunctionMapperによるEL式からの関数の呼び出し
 
 # How to build
+[![Build Status](https://travis-ci.org/seraphy/StandaloneELContext.svg)](https://travis-ci.org/seraphy/StandaloneELContext)
 
 このプロジェクトはeclipseで作成されています。
 
