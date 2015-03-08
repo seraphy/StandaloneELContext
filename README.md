@@ -10,7 +10,21 @@ EL式(2.2/3.0)をプログラム側より評価するための仕組みについ
 - VariableResolverと、ValueWrapperによる変数の扱い方
 - FunctionMapperによるEL式からの関数の呼び出し
 
-# References
+# How to build
+
+このプロジェクトはeclipseで作成されています。
+
+Java7を使用しています。
+
+ライブラリですので単体で実行できるものではありませんが、動作確認用プログラムが同梱されています。
+
+プロジェクトのビルドにはmaven3を使用しています。
+
+mvn clean test
+
+で動作確認ができます。
+
+# References, Bibliography
 - 同じようなことをやってるサンプル例
  - http://illegalargumentexception.blogspot.jp/2008/04/java-using-el-outside-j2ee.html
  - http://stackoverflow.com/questions/17026863/java-how-to-evaluate-an-el-expression-standalone-outside-any-web-framework
