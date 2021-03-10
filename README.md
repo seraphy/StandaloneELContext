@@ -1,5 +1,5 @@
 # Synopsis
-EL式(2.2/3.0)をプログラム側より評価するための仕組みについてのサンプル.
+EL式(2.2/3.0)をプログラム側より評価するための仕組みについてのサンプル. [![Build Status](https://travis-ci.com/seraphy/StandaloneELContext.svg?branch=master)](https://travis-ci.com/seraphy/StandaloneELContext)
 
 # Description
 
@@ -11,7 +11,6 @@ EL式(2.2/3.0)をプログラム側より評価するための仕組みについ
 - FunctionMapperによるEL式からの関数の呼び出し
 
 # How to build
-[![Build Status](https://travis-ci.org/seraphy/StandaloneELContext.svg)](https://travis-ci.org/seraphy/StandaloneELContext)
 
 このプロジェクトはeclipseで作成されています。
 
